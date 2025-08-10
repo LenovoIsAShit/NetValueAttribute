@@ -1,0 +1,37 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\MyProjects\\NetSync\\NetSyncObject\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{04201946-19EB-45AE-BA17-D6DE171D427C}|NetSyncObject\\NetSyncObject.csproj|d:\\myprojects\\netsync\\netsyncobject\\netsyncobject\\netsyncobject.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{04201946-19EB-45AE-BA17-D6DE171D427C}|NetSyncObject\\NetSyncObject.csproj|solutionrelative:netsyncobject\\netsyncobject.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "NetSyncObject.cs",
+              "DocumentMoniker": "D:\\MyProjects\\NetSync\\NetSyncObject\\NetSyncObject\\NetSyncObject.cs",
+              "RelativeDocumentMoniker": "NetSyncObject\\NetSyncObject.cs",
+              "ToolTip": "D:\\MyProjects\\NetSync\\NetSyncObject\\NetSyncObject\\NetSyncObject.cs",
+              "RelativeToolTip": "NetSyncObject\\NetSyncObject.cs",
+              "ViewState": "AgIAAOsAAAAAAAAAAADwvxcCAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-05T14:01:47.468Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

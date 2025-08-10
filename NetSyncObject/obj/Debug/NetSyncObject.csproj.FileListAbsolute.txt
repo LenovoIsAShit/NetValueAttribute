@@ -1,0 +1,6 @@
+D:\MyProjects\NetSync\NetSyncObject\NetSyncObject\bin\Debug\NetSyncObject.dll
+D:\MyProjects\NetSync\NetSyncObject\NetSyncObject\bin\Debug\NetSyncObject.pdb
+D:\MyProjects\NetSync\NetSyncObject\NetSyncObject\obj\Debug\NetSyncObject.csproj.AssemblyReference.cache
+D:\MyProjects\NetSync\NetSyncObject\NetSyncObject\obj\Debug\NetSyncObject.csproj.CoreCompileInputs.cache
+D:\MyProjects\NetSync\NetSyncObject\NetSyncObject\obj\Debug\NetSyncObject.dll
+D:\MyProjects\NetSync\NetSyncObject\NetSyncObject\obj\Debug\NetSyncObject.pdb
