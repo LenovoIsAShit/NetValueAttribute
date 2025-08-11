@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Text.Json;
 using System.Net;
+using System.Collections;
 
 
 namespace NetSyncObject
@@ -25,7 +26,7 @@ namespace NetSyncObject
         //客户端状态枚举
         public enum ClientState
         {
-            Send,Received,Start,Close,Broadcast
+            Join, Receiving,Start,Close,Broadcast
         }
 
         public SyncClientObject()
@@ -39,10 +40,10 @@ namespace NetSyncObject
         {
             switch (cmd)
             {
-                case ClientState.Send:
-                    SendData();
+                case ClientState.Join:
+                    SendJoinRequest();
                     break;
-                case ClientState.Received:
+                case ClientState.Receiving:
                     ReceiveData();
                     break;
                 case ClientState.Start:
@@ -55,28 +56,81 @@ namespace NetSyncObject
                     break;
             }
         }
-
-
         public void StartClient()
         {
-            
+            //开启监听
+            OnAction(ClientState.Receiving);
+            //广播
+            OnAction(ClientState.Broadcast);
         }
-
         public void CloseClient()
         {
+            //关闭套接字
+            if (basicClientData.receiver != null)
+            {
+                basicClientData.receiver.Close();
+                basicClientData.receiver = null;
+            }
+
+            if (basicClientData.sender != null)
+            {
+                basicClientData.sender.Close();
+                basicClientData.sender = null;
+            }
 
         }
-
-        public void SendData()
+        public void SendJoinRequest()
         {
+            string Ip = basicClientData.HostIP;
+            int Port = basicClientData.HostPort;
+            UdpClient sender = basicClientData.sender;
 
+            //加入请求
+            QAData data = new QAData(
+                QAData.QuestState.ClientJoin,
+                basicClientData.clientIP,
+                basicClientData.ReceivePort
+            );
+            string jsonData = JsonSerializer.Serialize(data);
+            byte[] datas = Encoding.UTF8.GetBytes(jsonData);
+
+            //请求加入
+            sender.SendAsync(datas, datas.Length, new IPEndPoint(IPAddress.Parse(Ip), Port));
         }
-
         public void ReceiveData()
         {
+            List<Task> tasks = new List<Task>();
+            tasks.Add(StartReceive());
 
+            Task.WhenAll(tasks);
         }
+        private async Task StartReceive()
+        {
+            //监听套接字
+            UdpClient Receiver = basicClientData.receiver;
 
+            //开始监听
+            while (true)
+            {
+                UdpReceiveResult result;
+
+                try
+                {
+                    //等待接收
+                    result = await Receiver.ReceiveAsync();
+                }
+                catch (ObjectDisposedException) {
+                    //关闭套接字
+                    Receiver = null;
+                    break;
+                }
+
+                //反序列化，并处理数据
+                byte[] resultData = result.Buffer;
+                var datas = JsonSerializer.Deserialize<NetData>(resultData);
+                DataHandler.Handle(datas,this);
+            }
+        }
         public void Broadcast()
         {
             //序列化询问消息
@@ -93,6 +147,20 @@ namespace NetSyncObject
             UdpClient sender = new UdpClient();
             sender.EnableBroadcast = true;
             sender.SendAsync(datas, datas.Length, new IPEndPoint(IPAddress.Broadcast, sendPort));
+            sender.Close();
+        }
+        public void HandleHostAnswerData(NetData data)
+        {
+            //设置主机信息
+            QAData answer = data as QAData;
+            if (data != null)
+            {
+                basicClientData.SetHost(answer.IP, answer.Port);
+
+            }
+
+            //马上发送申请加入
+            OnAction(ClientState.Join);
         }
     }
 
@@ -107,7 +175,7 @@ namespace NetSyncObject
         //关闭客户端
         void CloseClient();
         //发送消息
-        void SendData();
+        void SendJoinRequest();
         //接收消息后回调
         void ReceiveData();
         //广播
@@ -142,15 +210,35 @@ namespace NetSyncObject
         public string clientIP;
         //主机IP
         public string HostIP;
-        //发送端口
+        //客机发送端口
         public int SendPort;
-        //接收端口
+        //客机接收端口
         public int ReceivePort;
+        //主机接收端口
+        public int HostPort;
         //客户端发送套接字
         public UdpClient sender;
         //客户端接收套接字
         public UdpClient receiver;
-        
+
+        public BasicClientData(string clientIP, int ReceivePort,int SendPort)
+        {
+            this.clientIP = clientIP;
+            this.ReceivePort = ReceivePort;
+
+            IPEndPoint ipe1 = new IPEndPoint(IPAddress.Parse(clientIP), ReceivePort);
+            receiver = new UdpClient(ipe1);
+
+            IPEndPoint ipe2 = new IPEndPoint(IPAddress.Parse(clientIP), SendPort);
+            sender = new UdpClient(ipe2);
+        }
+        public BasicClientData() { }
+
+        public void SetHost(string HostIP,int HostReceivePort)
+        {
+            this.HostIP = HostIP;
+            this.HostPort = HostReceivePort;
+        }
     }
 
 
@@ -195,7 +283,7 @@ namespace NetSyncObject
         //消息请求类型
         public enum QuestState
         {
-            QueryHost,HostAnswer,Close,NormalData
+            QueryHost,HostAnswer,Close,NormalData,ClientJoin
         }
         public QuestState state;
 
@@ -210,19 +298,48 @@ namespace NetSyncObject
     public class QAData : NetData
     {
         // 请求客机IP/回应主机IP
-        string clientIP;
+        public string IP;
         // 请求接收端口/回应主机端口
-        int Port;
+        public int Port;
 
         public QAData(QuestState state, string ip, int port)
         {
             this.state = state;
-            this.clientIP = ip;
+            this.IP = ip;
             this.Port = port;
         }
     }
 
+    /// <summary>
+    /// 普通同步数据
+    /// </summary>
+    [Serializable]
+    public class NormalData : NetData
+    {
 
+    }
+
+    /// <summary>
+    /// 消息处理
+    /// </summary>
+    public class DataHandler
+    {
+        public static void Handle(NetData data, SyncClientObject client)
+        {
+            switch (data.state)
+            {
+                case NetData.QuestState.QueryHost:
+                    break;
+                case NetData.QuestState.HostAnswer:
+                    client.HandleHostAnswerData(data);
+                    break;
+                case NetData.QuestState.Close:
+                    break;
+                case NetData.QuestState.NormalData:
+                    break;
+            }
+        }
+    }
 
     ///////////////////////////////  网络消息 结束 ///////////////////////////////
 
