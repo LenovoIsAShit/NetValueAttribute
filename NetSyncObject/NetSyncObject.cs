@@ -17,7 +17,7 @@ using System.Collections;
 namespace NetSyncObject
 {
     ///////////////////////////////  客机 开始 ///////////////////////////////
-    public abstract class SyncClientObject: IClientBehavior
+    public class SyncClientObject: IClientBehavior
     {
         //默认数据集合
         BasicClientData basicClientData;
@@ -36,6 +36,10 @@ namespace NetSyncObject
         }
 
 
+        /// <summary>
+        /// 客机行为
+        /// </summary>
+        /// <param name="cmd"></param>
         public void OnAction(ClientState cmd)
         {
             switch (cmd)
@@ -58,6 +62,8 @@ namespace NetSyncObject
         }
         public void StartClient()
         {
+            //先反射一遍
+            SyncReflectionTool.Instance.Reflection(customClientData.GetType());
             //开启监听
             OnAction(ClientState.Receiving);
             //广播
@@ -149,19 +155,35 @@ namespace NetSyncObject
             sender.SendAsync(datas, datas.Length, new IPEndPoint(IPAddress.Broadcast, sendPort));
             sender.Close();
         }
+
+
+        /// <summary>
+        /// 管理主机列表
+        /// </summary>
+        /// <param name="data"></param>
         public void HandleHostAnswerData(NetData data)
         {
             //设置主机信息
             QAData answer = data as QAData;
             if (data != null)
             {
-                basicClientData.SetHost(answer.IP, answer.Port);
-
+                basicClientData.AnswerHosts.Add(Tuple.Create(answer.IP, answer.Port));
             }
-
-            //马上发送申请加入
-            OnAction(ClientState.Join);
         }
+        public void SetHost(string IP, int Port)
+        {
+            basicClientData.SetHost(IP, Port);
+        }
+        public List<Tuple<string,int>> GetHostList()
+        {
+            return basicClientData.AnswerHosts;
+        }
+        public void ClearHostList()
+        {
+            basicClientData.AnswerHosts.Clear();
+        }
+
+
     }
 
 
@@ -204,7 +226,7 @@ namespace NetSyncObject
     /// <summary>
     /// 默认数据集合
     /// </summary>
-    internal class BasicClientData : BaseDataSet
+    public class BasicClientData : BaseDataSet
     {
         //本机IP
         public string clientIP;
@@ -220,6 +242,8 @@ namespace NetSyncObject
         public UdpClient sender;
         //客户端接收套接字
         public UdpClient receiver;
+        //临时存主机
+        public List<Tuple<string, int>> AnswerHosts;
 
         public BasicClientData(string clientIP, int ReceivePort,int SendPort)
         {
@@ -231,8 +255,10 @@ namespace NetSyncObject
 
             IPEndPoint ipe2 = new IPEndPoint(IPAddress.Parse(clientIP), SendPort);
             sender = new UdpClient(ipe2);
+
+            AnswerHosts = new List<Tuple<string, int>>();
         }
-        public BasicClientData() { }
+        public BasicClientData() { AnswerHosts = new List<Tuple<string, int>>(); }
 
         public void SetHost(string HostIP,int HostReceivePort)
         {
@@ -265,6 +291,97 @@ namespace NetSyncObject
     }
 
     ///////////////////////////////  主机 结束 ///////////////////////////////
+
+
+
+
+
+
+
+    ///////////////////////////////  客机池 开始 ///////////////////////////////
+    public class SyncPool
+    {
+        static SyncPool instance;
+        internal static SyncPool Instance
+        {
+            get {
+                lock (instance)
+                {
+                    if (instance == null)
+                    {
+                        lock (instance)
+                        {
+                            Init();
+                        }
+                    }
+                }
+                return instance;
+            }
+        }
+
+        //客机池
+        static List<BasicClientData> _PoolBasic;
+        static List<CustomClientData> _PoolCustom;
+        static Dictionary<int, bool> _Active;
+        //客机数量
+        static int _ClientNum;
+
+
+        static void Init()
+        {
+            instance = new SyncPool();
+            _PoolBasic = new List<BasicClientData>();
+            _PoolCustom = new List<CustomClientData>();
+            _Active = new Dictionary<int, bool>();
+            _ClientNum = 0;
+        }
+
+        internal int  AddClient()
+        {
+            int index = -1;
+            for(int i=0;i< _Active.Count;i++)
+            {
+                if (_Active[i] == false)
+                {
+                    _Active[i] = true;
+                    index = i;
+                }
+            }
+            //如果没找到就添加
+            if (index == -1)
+            {
+                _PoolBasic.Add(new BasicClientData());
+                _PoolCustom.Add(new CustomClientData());
+                _Active.Add(index, true);
+                _ClientNum++;
+            }
+
+            return index;
+        }
+        internal void RemoveClient(int index)
+        {
+            _ClientNum--;
+            _Active[index] = false;
+        }
+        internal Tuple<BasicClientData, CustomClientData> GetClientData(int index)
+        {
+            return Tuple.Create(_PoolBasic[index], _PoolCustom[index]);
+        }
+
+        internal void ResetPool()
+        {
+            _PoolBasic.Clear();
+            _PoolCustom.Clear();
+            _Active.Clear();
+            _ClientNum = 0;
+        }
+
+        public static int GetClientNum()
+        {
+            return _ClientNum;
+        }
+    }
+    ///////////////////////////////  客机池 结束 ///////////////////////////////
 
 
 
