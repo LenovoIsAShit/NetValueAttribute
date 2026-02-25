@@ -1,4 +1,4 @@
-受UE反射宏状态同步启发，想自己做一个c#版Attribute特性同步插件，目前正在维护中，希望能到可以正常使用那天 (ง •_•)ง<br>
+受UE属性集同步启发，想要做一个用于自己Unity Demo的网络同步方案，记录第一次的设计<br>
 使用方法：派生 SyncClientObject （这是一个客户端基类），并在 CustomClientData类定义 中在需要同步的字段上声明[NetValueAttribute]特性，即可自动同步<br><br>
 
 客机设计示意:<br>
